@@ -1,6 +1,7 @@
 import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options  # ← 追加！
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -26,34 +27,33 @@ if search_button:
 
     try:
         driver = webdriver.Chrome(service=service, options=options)
-        # driver = webdriver.Chrome(
-        #    executable_path="/usr/bin/chromedriver",
-        #    options=options
-        #)
         st.success("WebDriver initialized successfully!")
 
-        # 以下、Seleniumの処理（省略せずコピペしてOK）
-
+        # jRCT検索処理
         driver.get("https://jrct.mhlw.go.jp/search")
         search_box = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "reg-plobrem-1"))
         )
         search_box.send_keys(disease_name)
+
         keyword_box = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "demo-1"))
         )
         keyword_box.send_keys(free_keyword)
+
         recruitment_checkbox = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "reg-recruitment-2"))
         )
         if not recruitment_checkbox.is_selected():
             recruitment_checkbox.click()
+
         search_button_element = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "検索")]'))
         )
         driver.execute_script("arguments[0].scrollIntoView(true);", search_button_element)
         time.sleep(1)
         search_button_element.click()
+
         rows = WebDriverWait(driver, 20).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "table.table-search tbody tr"))
         )
@@ -68,6 +68,7 @@ if search_button:
                 "公表日": cols[4].text.strip(),
                 "詳細": cols[5].find_element(By.TAG_NAME, "a").get_attribute("href")
             })
+
         st.write("検索結果:")
         for result in results:
             st.write(result)
