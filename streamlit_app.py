@@ -1,10 +1,12 @@
 import streamlit as st
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+
+service = Service("/usr/bin/chromedriver")
 
 st.title("jRCT検索アプリ")
 st.write("疾患名とフリーワードを入力してください。")
@@ -23,10 +25,11 @@ if search_button:
     options.add_argument("--window-size=1920,1080")
 
     try:
-        driver = webdriver.Chrome(
-            executable_path="/usr/bin/chromedriver",
-            options=options
-        )
+        driver = webdriver.Chrome(service=service, options=options)
+        # driver = webdriver.Chrome(
+        #    executable_path="/usr/bin/chromedriver",
+        #    options=options
+        #)
         st.success("WebDriver initialized successfully!")
 
         # 以下、Seleniumの処理（省略せずコピペしてOK）
