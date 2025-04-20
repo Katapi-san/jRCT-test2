@@ -15,6 +15,7 @@ CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
 CHROME_BINARY_PATH = "/usr/bin/chromium"
 
 options = Options()
+options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 options.binary_location = CHROME_BINARY_PATH
 options.add_argument("--headless=new")
 options.add_argument("--no-sandbox")
