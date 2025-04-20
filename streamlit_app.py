@@ -1,5 +1,7 @@
 import streamlit as st
-st.write("start")
+import pandas as pd
+import base64
+import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -7,7 +9,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
+
+st.write("start")
 
 st.write("libraries imported")
 
@@ -35,56 +38,65 @@ search_button = st.button("検索開始")
 if search_button:
     st.write("検索開始ボタンクリック検知")
 
-try:
-    driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
-    driver.implicitly_wait(40)  # 明示的 wait の補助
-    st.write("WebDriver 初期化成功")
+    try:
+        driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
+        driver.implicitly_wait(40)
+        st.write("WebDriver 初期化成功")
 
-    driver.get("https://jrct.mhlw.go.jp/search")
-    st.write("ページ遷移成功")
+        driver.get("https://jrct.mhlw.go.jp/search")
+        st.write("ページ遷移成功")
+        st.write("現在のURL:", driver.current_url)
+        st.write("ページタイトル:", driver.title)
 
-    # ロード確認（デバッグログ）
-    st.write("現在のURL:", driver.current_url)
-    st.write("ページタイトル:", driver.title)
-    st.write("HTMLスニペット:", driver.page_source[:1000])  # 最初の1000文字だけ
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-plobrem-1"))).send_keys(disease_name)
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "demo-1"))).send_keys(free_keyword)
 
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-plobrem-1"))).send_keys(disease_name)
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "demo-1"))).send_keys(free_keyword)
+        checkbox = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-recruitment-2")))
+        if not checkbox.is_selected():
+            checkbox.click()
 
-    checkbox = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-recruitment-2")))
-    if not checkbox.is_selected():
-        checkbox.click()
+        search_button_element = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "検索")]'))
+        )
+        driver.execute_script("arguments[0].scrollIntoView(true);", search_button_element)
+        time.sleep(1)
+        search_button_element.click()
 
-    search_button_element = WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "検索")]'))
-    )
-    driver.execute_script("arguments[0].scrollIntoView(true);", search_button_element)
-    time.sleep(1)
-    search_button_element.click()
+        rows = WebDriverWait(driver, 20).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "table.table-search tbody tr"))
+        )
 
-    rows = WebDriverWait(driver, 20).until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "table.table-search tbody tr"))
-    )
+        results = []
+        for row in rows:
+            cols = row.find_elements(By.TAG_NAME, "td")
+            results.append({
+                "臨床研究実施計画番号": cols[0].text.strip(),
+                "研究の名称": cols[1].text.strip(),
+                "対象疾患名": cols[2].text.strip(),
+                "研究の進捗状況": cols[3].text.strip(),
+                "公表日": cols[4].text.strip(),
+                "詳細": cols[5].find_element(By.TAG_NAME, "a").get_attribute("href")
+            })
 
-    results = []
-    for row in rows:
-        cols = row.find_elements(By.TAG_NAME, "td")
-        results.append({
-            "臨床研究実施計画番号": cols[0].text.strip(),
-            "研究の名称": cols[1].text.strip(),
-            "対象疾患名": cols[2].text.strip(),
-            "研究の進捗状況": cols[3].text.strip(),
-            "公表日": cols[4].text.strip(),
-            "詳細": cols[5].find_element(By.TAG_NAME, "a").get_attribute("href")
-        })
+        if results:
+            df = pd.DataFrame(results)
+            st.subheader("🔍 検索結果一覧")
+            st.dataframe(df, use_container_width=True)
 
-    st.write("検索結果:")
-    for result in results:
-        st.write(result)
+            # CSVダウンロードリンク生成
+            def generate_download_link(dataframe):
+                csv = dataframe.to_csv(index=False)
+                b64 = base64.b64encode(csv.encode()).decode()
+                href = f'<a href="data:file/csv;base64,{b64}" download="jrct_results.csv">📥 CSVをダウンロード</a>'
+                return href
 
-except Exception as e:
-    st.error(f"Error initializing WebDriver: {str(e)}")
+            st.markdown(generate_download_link(df), unsafe_allow_html=True)
+        else:
+            st.warning("検索結果が見つかりませんでした。")
 
-finally:
-    if 'driver' in locals():
-        driver.quit()
+    except Exception as e:
+        st.error(f"Error initializing WebDriver: {str(e)}")
+
+    finally:
+        if 'driver' in locals():
+            driver.quit()
