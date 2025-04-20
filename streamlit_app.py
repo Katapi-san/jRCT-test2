@@ -36,10 +36,16 @@ if search_button:
 
 try:
     driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
+    driver.implicitly_wait(40)  # 明示的 wait の補助
     st.write("WebDriver 初期化成功")
 
     driver.get("https://jrct.mhlw.go.jp/search")
     st.write("ページ遷移成功")
+
+    # ロード確認（デバッグログ）
+    st.write("現在のURL:", driver.current_url)
+    st.write("ページタイトル:", driver.title)
+    st.write("HTMLスニペット:", driver.page_source[:1000])  # 最初の1000文字だけ
 
     WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-plobrem-1"))).send_keys(disease_name)
     WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "demo-1"))).send_keys(free_keyword)
