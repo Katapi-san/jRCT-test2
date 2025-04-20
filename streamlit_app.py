@@ -1,14 +1,16 @@
 import streamlit as st
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options  # ← 追加！
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
-service = Service("/usr/bin/chromedriver")
+# ServiceにChromedriverのパスを明示的に指定
+service = Service("/usr/lib/chromium-browser/chromedriver")  # Streamlit Cloudではこちらのパスが正解
 
+# UI
 st.title("jRCT検索アプリ")
 st.write("疾患名とフリーワードを入力してください。")
 
@@ -29,7 +31,7 @@ if search_button:
         driver = webdriver.Chrome(service=service, options=options)
         st.success("WebDriver initialized successfully!")
 
-        # jRCT検索処理
+        # jRCT検索ページ処理
         driver.get("https://jrct.mhlw.go.jp/search")
         search_box = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "reg-plobrem-1"))
