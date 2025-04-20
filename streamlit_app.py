@@ -1,16 +1,24 @@
 import streamlit as st
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
-# ServiceにChromedriverのパスを明示的に指定
-service = Service("/usr/bin/chromedriver")
+# ChromeDriver のパスとオプション設定（Streamlit Cloud用）
+CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
+CHROME_BINARY_PATH = "/usr/bin/chromium"
 
-# UI
+options = Options()
+options.binary_location = CHROME_BINARY_PATH
+options.add_argument("--headless=new")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-gpu")
+options.add_argument("--window-size=1920,1080")
+
 st.title("jRCT検索アプリ")
 st.write("疾患名とフリーワードを入力してください。")
 
@@ -19,36 +27,24 @@ free_keyword = st.text_input("フリーワード", "EGFR")
 search_button = st.button("検索開始")
 
 if search_button:
-    options = Options()
-    options.binary_location = "/usr/bin/chromium"
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-
     try:
-        driver = webdriver.Chrome(service=service, options=options)
+        # WebDriver起動
+        driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
         st.success("WebDriver initialized successfully!")
 
-        # jRCT検索ページ処理
+        # jRCT検索ページを開く
         driver.get("https://jrct.mhlw.go.jp/search")
-        search_box = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "reg-plobrem-1"))
-        )
-        search_box.send_keys(disease_name)
 
-        keyword_box = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "demo-1"))
-        )
-        keyword_box.send_keys(free_keyword)
+        # 「疾患名」と「フリーワード」を入力
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-plobrem-1"))).send_keys(disease_name)
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "demo-1"))).send_keys(free_keyword)
 
-        recruitment_checkbox = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "reg-recruitment-2"))
-        )
-        if not recruitment_checkbox.is_selected():
-            recruitment_checkbox.click()
+        # 「募集中」にチェック
+        checkbox = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "reg-recruitment-2")))
+        if not checkbox.is_selected():
+            checkbox.click()
 
+        # 検索ボタンをクリック
         search_button_element = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "検索")]'))
         )
@@ -56,6 +52,7 @@ if search_button:
         time.sleep(1)
         search_button_element.click()
 
+        # 結果取得
         rows = WebDriverWait(driver, 20).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "table.table-search tbody tr"))
         )
@@ -71,13 +68,15 @@ if search_button:
                 "詳細": cols[5].find_element(By.TAG_NAME, "a").get_attribute("href")
             })
 
+        # 結果表示
         st.write("検索結果:")
         for result in results:
             st.write(result)
 
     except Exception as e:
         st.error(f"Error initializing WebDriver: {str(e)}")
-
     finally:
-        if 'driver' in locals():
+        try:
             driver.quit()
+        except:
+            pass
