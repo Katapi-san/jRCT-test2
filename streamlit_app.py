@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 
 # ServiceにChromedriverのパスを明示的に指定
-service = Service("/usr/lib/chromium-browser/chromedriver")  # Streamlit Cloudではこちらのパスが正解
+service = Service("/usr/bin/chromedriver")
 
 # UI
 st.title("jRCT検索アプリ")
