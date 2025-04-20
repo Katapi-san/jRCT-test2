@@ -6,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
-# Streamlit UI
 st.title("jRCT検索アプリ")
 st.write("疾患名とフリーワードを入力してください。")
 
@@ -16,7 +15,7 @@ search_button = st.button("検索開始")
 
 if search_button:
     options = Options()
-    options.binary_location = "/usr/bin/chromium-browser"  # Chromium のパス
+    options.binary_location = "/usr/bin/chromium"
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -25,46 +24,36 @@ if search_button:
 
     try:
         driver = webdriver.Chrome(
-            executable_path="/usr/bin/chromedriver",  # ChromeDriver のパス
+            executable_path="/usr/bin/chromedriver",
             options=options
         )
         st.success("WebDriver initialized successfully!")
 
-        # jRCTサイトを開く
-        driver.get("https://jrct.mhlw.go.jp/search")
+        # 以下、Seleniumの処理（省略せずコピペしてOK）
 
-        # 疾患名入力
-        disease_box = WebDriverWait(driver, 20).until(
+        driver.get("https://jrct.mhlw.go.jp/search")
+        search_box = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "reg-plobrem-1"))
         )
-        disease_box.send_keys(disease_name)
-
-        # フリーワード入力
+        search_box.send_keys(disease_name)
         keyword_box = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "demo-1"))
         )
         keyword_box.send_keys(free_keyword)
-
-        # 募集中にチェック
         recruitment_checkbox = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "reg-recruitment-2"))
         )
         if not recruitment_checkbox.is_selected():
             recruitment_checkbox.click()
-
-        # 検索ボタンをクリック
         search_button_element = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "検索")]'))
         )
         driver.execute_script("arguments[0].scrollIntoView(true);", search_button_element)
         time.sleep(1)
         search_button_element.click()
-
-        # 結果を取得
         rows = WebDriverWait(driver, 20).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "table.table-search tbody tr"))
         )
-
         results = []
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
@@ -76,7 +65,6 @@ if search_button:
                 "公表日": cols[4].text.strip(),
                 "詳細": cols[5].find_element(By.TAG_NAME, "a").get_attribute("href")
             })
-
         st.write("検索結果:")
         for result in results:
             st.write(result)
